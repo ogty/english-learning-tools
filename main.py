@@ -16,7 +16,7 @@ Token = str
 
 class TaggedTokens(TypedDict):
     text: str
-    data: List[Tuple[Token, Tag]]
+    token_tag_pairs: List[Tuple[Token, Tag]]
 
 
 class MorphologicalAnalyzer:
@@ -26,33 +26,33 @@ class MorphologicalAnalyzer:
         "DT": ["Determiner", "限定詞"],
         "EX": ["Existential there", "存在を表す there"],
         "FW": ["Foreign word", "外国語"],
-        "IN": ["Preposition or subordinating conjunction", "前置詞または従属接続詞"],
+        "IN": ["Preposition or subordinating conjunction", "前置詞|従属接続詞"],
         "JJ": ["Adjective", "形容詞"],
-        "JJR": ["Adjective, comparative", "形容詞 (比較級)"],
-        "JJS": ["Adjective, superlative", "形容詞 (最上級)"],
+        "JJR": ["Adjective, comparative", "形容詞(比較級)"],
+        "JJS": ["Adjective, superlative", "形容詞(最上級)"],
         "LS": ["List item marker", "-"],
         "MD": ["Modal", "法"],
         "NN": ["Noun, singular or mass", "名詞"],
-        "NNS": ["Noun, plural", "名詞 (複数形)"],
+        "NNS": ["Noun, plural", "名詞(複数形)"],
         "NNP": ["Proper noun, singular", "固有名詞"],
-        "NNPS": ["Proper noun, plural", "固有名詞 (複数形)"],
+        "NNPS": ["Proper noun, plural", "固有名詞(複数形)"],
         "PDT": ["Predeterminer", "前限定辞"],
         "POS": ["Possessive ending", "所有格の終わり"],
-        "PRP": ["Personal pronoun", "人称代名詞 (PP)"],
-        "PRP$": ["Possessive pronoun", "所有代名詞 (PP$)"],
+        "PRP": ["Personal pronoun", "人称代名詞"],
+        "PRP$": ["Possessive pronoun", "所有代名詞"],
         "RB": ["Adverb", "副詞"],
-        "RBR": ["Adverb, comparative", "副詞 (比較級)"],
-        "RBS": ["Adverb, superlative", "副詞 (最上級)"],
+        "RBR": ["Adverb, comparative", "副詞(比較級)"],
+        "RBS": ["Adverb, superlative", "副詞(最上級)"],
         "RP": ["Particle", "不変化詞"],
         "SYM": ["Symbol", "記号"],
         "TO": ["to", "前置詞 to"],
         "UH": ["Interjection", "感嘆詞"],
-        "VB": ["Verb, base form", "動詞 (原形)"],
-        "VBD": ["Verb, past tense", "動詞 (過去形)"],
-        "VBG": ["Verb, gerund or present participle", "動詞 (動名詞または現在分詞)"],
-        "VBN": ["Verb, past participle", "動詞 (過去分詞)"],
-        "VBP": ["Verb, non-3rd person singular present", "動詞 (三人称単数以外の現在形)"],
-        "VBZ": ["Verb, 3rd person singular present", "動詞 (三人称単数の現在形)"],
+        "VB": ["Verb, base form", "動詞(原形)"],
+        "VBD": ["Verb, past tense", "動詞(過去形)"],
+        "VBG": ["Verb, gerund or present participle", "動詞(動名詞|現在分詞)"],
+        "VBN": ["Verb, past participle", "動詞(過去分詞)"],
+        "VBP": ["Verb, non-3rd person singular present", "動詞(三人称単数以外の現在形)"],
+        "VBZ": ["Verb, 3rd person singular present", "動詞(三人称単数の現在形)"],
         "WDT": ["Wh-determiner", "Wh 限定詞"],
         "WP": ["Wh-pronoun", "Wh 代名詞"],
         "WP$": ["Possessive wh-pronoun", "所有 Wh 代名詞"],
@@ -75,13 +75,13 @@ class MorphologicalAnalyzer:
             tagged_tokens = nltk.pos_tag(tokens)
 
             if self.tag_type == "abbreviation":
-                result.append(TaggedTokens(text=text, data=tagged_tokens))
+                result.append(TaggedTokens(text=text, token_tag_pairs=tagged_tokens))
                 continue
 
             index = 0 if self.tag_type == "expansion" else 1
             expression = lambda item: (item[0], self.tag_table[item[1]][index])
             tagged_tokens = list(map(expression, tagged_tokens))
-            result.append(TaggedTokens(text=text, data=tagged_tokens))
+            result.append(TaggedTokens(text=text, token_tag_pairs=tagged_tokens))
 
         return result
 
@@ -98,64 +98,71 @@ class MorphologicalAnalyzer:
 class TextsFormatter:
     def __init__(
         self,
-        is_translate: bool = None,
+        is_list: bool = False,
+        is_translate: bool = False,
         language_code: str = None,
-        color_enabled: bool = None,
-        colors_to_remove: List[str] = None,
+        color_enabled: bool = False,
+        colors_to_remove: List[str] = [],
     ) -> None:
-        self.is_translate = False if is_translate is None else True
-        self.color_enabled = False if color_enabled is None else True
+        self.is_list = is_list
+        self.is_translate = is_translate
+        self.color_enabled = color_enabled
         self.language_code = language_code
-        self.colors_to_remove = [] if colors_to_remove is None else colors_to_remove
+        self.colors_to_remove = colors_to_remove
+
+    def format_token_tag_pairs(
+        self, token_tag_pairs: List[Tuple[Token, Tag]]
+    ) -> List[str]:
+        # Create an object where tag is key and color is value
+        tags = list(set([tag for _, tag in token_tag_pairs]))
+        color_tag = self.generate_color_tag(tags, self.colors_to_remove)
+
+        tag_list = set()
+        tokens, under_line, part_of_speech_line = "", "", ""
+
+        color = ""
+        for token, tag in token_tag_pairs:
+            tag_length = self.adjust_length_ja_en(tag)
+            if self.color_enabled:
+                color = color_tag[tag]
+                tag = colored(tag, color)
+
+            # Tag and part of speech
+            adjusted_length = len(token)
+            if not self.is_list:
+                adjusted_length = max(adjusted_length, tag_length)
+                if tag_length < adjusted_length:
+                    tag += abs(tag_length - adjusted_length) * " "
+            else:
+                tag_list.add(tag)
+            tokens += f" {token.ljust(adjusted_length, ' ')}"
+            part_of_speech_line += f" {tag}"
+
+            # Token under line
+            token_under_line = adjusted_length * "▔"
+            if self.color_enabled:
+                token_under_line = colored(token_under_line, color)
+            under_line += f" {token_under_line}"
+
+        if self.is_list:
+            tag_list = [f"- {tag}" for tag in sorted(tag_list, key=len)]
+            part_of_speech_line = "\n".join(tag_list)
+
+        return [tokens, under_line, part_of_speech_line]
 
     def format(self, texts_data: List[TaggedTokens]) -> str:
         formatted_texts = []
         for text_data in texts_data:
-            data = text_data.get("data")
+            token_tag_pairs = text_data.get("token_tag_pairs")
             text = text_data.get("text")
 
-            # Create an object where tag is key and color is value
-            tags = list(set([tag for _, tag in data]))
-            color_tag = self.generate_color_tag(tags, self.colors_to_remove)
-
-            text_line = ""
-            text_under_line = ""
-            part_of_speech_line = ""
-
-            for token, tag in data:
-                token_length = len(token)
-                tag_length = self.adjust_length_ja_en(tag)
-
-                color = ""
-                if self.color_enabled:
-                    color = color_tag[tag]
-                    tag = colored(tag, color)
-
-                # Tag
-                adjusted_length = max(token_length, tag_length)
-                if tag_length < token_length:
-                    tag += abs(tag_length - token_length) * " "
-
-                # Token under line
-                token_under_line = adjusted_length * "▔"
-                if self.color_enabled:
-                    token_under_line = colored(token_under_line, color)
-
-                # Adjusted token
-                adjusted_token = token.ljust(adjusted_length, " ")
-
-                text_line += " " + adjusted_token
-                text_under_line += " " + token_under_line
-                part_of_speech_line += " " + tag
-
-            formatted_text = [text_line, text_under_line, part_of_speech_line]
+            formatted_text = self.format_token_tag_pairs(token_tag_pairs)
             if self.is_translate:
                 translated_text = self.translate(text)
-                formatted_text.append("\n" + translated_text)
+                formatted_text.append(f"\n{translated_text}")
 
             terminal_width = os.get_terminal_size().columns
             formatted_text.append(f"\n{terminal_width * '─'}\n")
-
             formatted_texts.append("\n".join(formatted_text))
 
         return "\n".join(formatted_texts)
@@ -168,11 +175,11 @@ class TextsFormatter:
         return translated_text
 
     @staticmethod
-    def adjust_length_ja_en(ja_str: str) -> int:
-        ja_chars = list(normalize("NFKC", ja_str))
+    def adjust_length_ja_en(ja_string: str) -> int:
+        ja_characters = list(normalize("NFKC", ja_string))
 
         adjusted_length = 0
-        for character in ja_chars:
+        for character in ja_characters:
             if east_asian_width(character) == "W":
                 adjusted_length += 2
                 continue
@@ -184,14 +191,8 @@ class TextsFormatter:
     def generate_color_tag(
         tags: List[str], colors_to_remove: List[str] = []
     ) -> Dict[str, str]:
-        colors = list(COLORS.keys())
-        for color in colors_to_remove:
-            if color in colors:
-                colors.remove(color)
-
-        result = {}
-        for tag, color in zip(tags, colors):
-            result[tag] = color
+        colors = [color for color in COLORS.keys() if color not in colors_to_remove]
+        result = {tag: color for tag, color in zip(tags, colors)}
         return result
 
 
@@ -199,22 +200,25 @@ class TextsFormatterDeepL(TextsFormatter):
     def __init__(
         self,
         api_key: str,
-        is_translate: bool = None,
+        is_list: bool = False,
+        is_translate: bool = False,
         language_code: str = None,
-        color_enabled: bool = None,
-        colors_to_remove: List[str] = None,
+        color_enabled: bool = False,
+        colors_to_remove: List[str] = [],
     ) -> None:
-        super().__init__(is_translate, language_code, color_enabled, colors_to_remove)
+        super().__init__(
+            is_list, is_translate, language_code, color_enabled, colors_to_remove
+        )
         self.api_key = api_key
 
     def translate(self, text: str) -> str:
-        translator = deepl.Translator(self.api_key)
+        translator = deepl.Translator(self.api_key).translate_text
         if self.language_code is None:
             return text
 
         source_lang = detect(text)
-        translated_text = translator.translate_text(
-            text, source_lang=source_lang, target_lang=self.language_code
+        translated_text = translator(
+            text=text, source_lang=source_lang, target_lang=self.language_code
         )
         return str(translated_text)
 
@@ -285,19 +289,21 @@ if __name__ == "__main__":
     # MorphologicalAnalyzer.setup()
 
     analyzer = MorphologicalAnalyzer(tag_type="japanese")
-    # formatter = TextsFormatter(
-    #     is_translate=True,
-    #     language_code="ja",
-    #     color_enabled=True,
-    #     colors_to_remove=["black", "grey", "dark_grey"],
-    # )
-    formatter = TextsFormatterDeepL(
-        api_key=os.environ["DEEPL_API_KEY"],
+    formatter = TextsFormatter(
+        # is_list=True,
         is_translate=True,
         language_code="ja",
         color_enabled=True,
         colors_to_remove=["black", "grey", "dark_grey"],
     )
+    # formatter = TextsFormatterDeepL(
+    #     is_list=True,
+    #     api_key=os.environ["DEEPL_API_KEY"],
+    #     is_translate=True,
+    #     language_code="ja",
+    #     color_enabled=True,
+    #     colors_to_remove=["black", "grey", "dark_grey"],
+    # )
 
     text = "The quick brown fox jumps over the lazy dog."
     analyzed_text = analyzer.analyze(text)
