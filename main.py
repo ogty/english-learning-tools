@@ -289,21 +289,21 @@ if __name__ == "__main__":
     # MorphologicalAnalyzer.setup()
 
     analyzer = MorphologicalAnalyzer(tag_type="japanese")
-    formatter = TextsFormatter(
-        # is_list=True,
-        is_translate=True,
-        language_code="ja",
-        color_enabled=True,
-        colors_to_remove=["black", "grey", "dark_grey"],
-    )
-    # formatter = TextsFormatterDeepL(
+    # formatter = TextsFormatter(
     #     is_list=True,
-    #     api_key=os.environ["DEEPL_API_KEY"],
     #     is_translate=True,
     #     language_code="ja",
     #     color_enabled=True,
     #     colors_to_remove=["black", "grey", "dark_grey"],
     # )
+    formatter = TextsFormatterDeepL(
+        is_list=True,
+        api_key=os.environ["DEEPL_API_KEY"],
+        is_translate=True,
+        language_code="ja",
+        color_enabled=True,
+        colors_to_remove=["black", "grey", "dark_grey"],
+    )
 
     text = "The quick brown fox jumps over the lazy dog."
     analyzed_text = analyzer.analyze(text)

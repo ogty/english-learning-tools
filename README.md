@@ -2,8 +2,6 @@
 
 <div align="center">
     <img src="./images/image.png">
-</div>
-
-<div align="center">
     <img src="./images/image2.png">
+    <img src="./images/image3.png">
 </div>
