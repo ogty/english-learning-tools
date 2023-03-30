@@ -1,0 +1,12 @@
+{
+    "editor.fontFamily": "Courier",
+    "editor.fontSize": 13,
+    "[python]": {
+      "editor.defaultFormatter": "ms-python.black-formatter",
+      "editor.formatOnSave": true,
+      "editor.tabSize": 4
+    },
+    "editor.detectIndentation": false,
+    "editor.formatOnSave": true,
+    "cSpell.words": ["nltk", "punkt", "perceptron", "nnps", "googletrans", "termcolor", "deepl", "langdetect"]
+}
